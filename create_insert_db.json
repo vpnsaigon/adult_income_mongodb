@@ -1,0 +1,182 @@
+// create database mongoDB
+
+show dbs
+
+use dep302_asm02
+
+db.createCollection('full_data')
+db.createCollection('user')
+db.createCollection('education')
+db.createCollection('occupation')
+db.createCollection('relationship')
+db.createCollection('finance')
+
+show collections
+ 
+// --------------------------------------------------
+// import file csv vào database MongoDB
+
+mongoimport -d dep302_asm02 -c full_data --type csv --headerline --drop /home/vpnsaigon/Documents/Assignment02/US_Adult_Income.csv 
+
+db.full_data.find()
+
+
+// import dữ liệu cho các Collection không có chứa khóa ngoại tới các Collection khác, ví dụ như Collection education, finance, occupation, relationship, ...
+
+// ---------------------------
+// education
+
+function loadEducation() {
+	const bulkInsert = db.education.initializeUnorderedBulkOp();
+	// Get all Documents in 'full_data' Collection
+	const documents = db.full_data.find({});
+
+	// Process each document
+	documents.forEach(function (doc) {
+		const element = {
+			education: doc.education,
+            education_num: doc.education_num
+        };
+		// Upsert into education Document
+		bulkInsert.find(element).upsert().replaceOne(element);
+    });
+	bulkInsert.execute();
+	return true;
+}
+
+loadEducation()
+db.education.find().pretty()
+db.education.find().count()
+
+// ---------------------------
+// finance
+
+function loadFinance() {
+	const bulkInsert = db.finance.initializeUnorderedBulkOp();
+	// Get all Documents in 'full_data' Collection
+	const documents = db.full_data.find({});
+
+	// Process each document
+	documents.forEach(function (doc) {
+		const element = {
+			total: doc.total,
+            capital_gain: doc.capital_gain,
+            capital_loss: doc.capital_loss,
+            income_bracket: doc.income_bracket
+        };
+		// Upsert into finance Document
+		bulkInsert.find(element).upsert().replaceOne(element);
+    });
+	bulkInsert.execute();
+	return true;
+}
+
+loadFinance()
+db.finance.find().pretty()
+db.finance.find().count()
+
+// ---------------------------
+// occupation
+
+function loadOccupation() {
+	const bulkInsert = db.occupation.initializeUnorderedBulkOp();
+	// Get all Documents in 'full_data' Collection
+	const documents = db.full_data.find({});
+
+	// Process each document
+	documents.forEach(function (doc) {
+		const element = {
+			occupation: doc.occupation,
+            workclass: doc.workclass,
+            hours_per_week: doc.hours_per_week
+        };
+		// Upsert into education Document
+		bulkInsert.find(element).upsert().replaceOne(element);
+    });
+	bulkInsert.execute();
+	return true;
+}
+
+loadOccupation()
+db.occupation.find().pretty()
+db.occupation.find().count()
+
+// ---------------------------
+// relationship
+
+function loadRelationship() {
+	const bulkInsert = db.relationship.initializeUnorderedBulkOp();
+	// Get all Documents in 'full_data' Collection
+	const documents = db.full_data.find({});
+
+	// Process each document
+	documents.forEach(function (doc) {
+		const element = {
+			relationship: doc.relationship,
+            marital_status: doc.marital_status
+        };
+		// Upsert into education Document
+		bulkInsert.find(element).upsert().replaceOne(element);
+    });
+	bulkInsert.execute();
+	return true;
+}
+
+loadRelationship()
+db.relationship.find().pretty()
+db.relationship.find().count()
+
+// ---------------------------
+// import dữ liệu cho Collection chứa khóa ngoại như Collection user
+
+function loadUser() {
+	const bulkInsert = db.user.initializeUnorderedBulkOp();
+	// Get all Documents in 'full_data' Collection
+	const documents = db.full_data.find({});
+
+	// Process each document
+	documents.forEach(function (doc) {
+		const element = {
+			age: doc.age,
+			gender: doc.gender,
+			race: doc.race,
+            native_country: doc.native_country
+        };
+
+		// Get education PK
+		const education = db.education.findOne({
+			education: doc.education
+        });
+		element.education_id = education._id;
+
+        // Get finance PK
+		const finance = db.finance.findOne({
+			total: doc.total
+        });
+		element.finance_id = finance._id;
+
+        // Get occupation PK
+		const occupation = db.occupation.findOne({
+			occupation: doc.occupation
+        });
+		element.occupation_id = occupation._id;
+
+        // Get relationship PK
+		const relationship = db.relationship.findOne({
+			relationship: doc.relationship
+        });
+		element.relationship_id = relationship._id;
+
+		// Upsert into user collection
+		bulkInsert.find(element).upsert().replaceOne(element);
+    });
+
+	bulkInsert.execute();
+	return true;
+}
+
+loadUser()
+db.user.find().pretty()
+db.user.find().count()
+
+

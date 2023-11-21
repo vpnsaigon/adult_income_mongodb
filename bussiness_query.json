@@ -1,0 +1,219 @@
+// Business Query
+
+use dep302_asm02
+
+// --------------------------------------------------
+// 4. Liệt kê được các Business Query (truy vấn nghiệp vụ) và viết các câu lệnh để thực hiện các truy vấn đó.
+
+// Có bao nhiêu người là Nữ và làm việc nhiều hơn 30 tiếng / tuần ?
+
+db.user.aggregate([
+    {
+        $lookup: {
+            from: "occupation",
+            localField: "occupation_id",
+            foreignField: "_id",
+            as: "occupation"
+        }
+    },
+    {
+        $match: {
+            "gender": "Female",
+            "occupation.hours_per_week": { $gt: 30 }
+        }
+    },
+    {
+        $count: "result"
+    }
+])
+
+
+// Có bao nhiêu người ở Mỹ có mức thu nhập >50K
+
+db.user.aggregate([
+    {
+        $lookup: {
+            from: "finance",
+            localField: "finance_id",
+            foreignField: "_id",
+            as: "finance"
+        }
+    },
+    {
+        $match: {
+            native_country: "United-States",
+            "finance.income_bracket": ">50K"
+        }
+    },
+    {
+        $count: "result"
+    }
+])
+
+
+
+// Tính tổng số dư tài khoản của những người đang ở Mỹ.
+
+db.user.aggregate([
+    {
+        $lookup: {
+            from: "finance",
+            localField: "finance_id",
+            foreignField: "_id",
+            as: "finance"
+        }
+    },
+    {
+        $unwind: '$finance'
+    },
+    {
+        $match: {
+            "native_country": "United-States"
+        }
+    },
+    {
+        $group: {
+            _id: null,
+            total_balance: { $sum: "$finance.total" }         
+        }
+    }
+])
+
+
+// Tính tổng số giờ làm việc một tuần của những người có mức thu nhập <=50K
+
+db.user.aggregate([
+    {
+        $lookup: {
+            from: "occupation",
+            localField: "occupation_id",
+            foreignField: "_id",
+            as: "occupation"
+        }
+    },
+    {
+        $lookup: {
+            from: "finance",
+            localField: "finance_id",
+            foreignField: "_id",
+            as: "finance"
+        }
+    },
+    {
+        $unwind: '$occupation'
+    },
+    {
+        $match: {
+            'finance.income_bracket': "<=50K"
+        }
+    },
+    {
+        $group: {
+            _id: null,
+            hour_total: {$sum: '$occupation.hours_per_week'}
+        }
+    }
+])
+
+
+// Tìm những người có tổng số tiền trong tài khoản >100000 và có số giờ làm việc hàng tuần <55.
+
+db.user.aggregate([
+    {
+        $lookup: {
+            from: "occupation",
+            localField: "occupation_id",
+            foreignField: "_id",
+            as: "occupation"
+        }
+    },
+    {
+        $lookup: {
+            from: "finance",
+            localField: "finance_id",
+            foreignField: "_id",
+            as: "finance"
+        }
+    },
+    {
+        $match: {
+            $and: [
+                {'finance.total': {$gt: 100000}},
+                {'occupation.hours_per_week': {$lt: 55}}
+            ]            
+        }
+    },
+    {
+        $project: {
+            _id: 1,
+            age: 1,
+            gender: 1,
+            race: 1,
+            native_country: 1,
+            'finance.total': 1,
+            'occupation.hours_per_week': 1
+        }
+    }
+])
+
+
+
+// --------------------------------------------------
+// 5. (Yêu cầu nâng cao) Xây dựng Index cho các Collection
+// Để tăng tốc cho việc truy vấn dữ liệu, bạn hãy thiết lập các chỉ mục cho từng Collection để truy vấn nhanh hơn. Đồng thời bạn cũng phải giải thích được tại sao lại xây dựng Index như vậy.
+
+db.user.createIndex({ age: 1 });
+db.user.createIndex({ gender: 1 });
+db.user.createIndex({ race: 1 });
+db.user.createIndex({ native_country: 1 });
+
+db.user.getIndexes();
+
+//
+db.finance.createIndex({ total: 1 });
+db.finance.createIndex({ capital_gain: 1 });
+db.finance.createIndex({ capital_loss: 1 });
+db.finance.createIndex({ ncome_bracket: 1 });
+
+db.finance.getIndexes();
+
+//
+db.occupation.createIndex({ occupation: 1 });
+db.occupation.createIndex({ workclass: 1 });
+db.occupation.createIndex({ hours_per_week: 1 });
+
+db.occupation.getIndexes();
+
+//
+db.education.createIndex({ education: 1 });
+db.education.createIndex({ education_num: 1 });
+
+db.education.getIndexes();
+
+//
+db.relationship.createIndex({ relationship: 1 });
+db.relationship.createIndex({ marital_status: 1 });
+
+db.relationship.getIndexes();
+
+
+// Dưới đây là một số ví dụ về cách các chỉ mục này có thể được sử dụng để cải thiện hiệu suất truy vấn:
+
+// Truy vấn dữ liệu dựa trên độ tuổi:
+
+db.user.find({ age: { $gt: 25, $lt: 35 }});
+
+
+
+// Truy vấn dữ liệu dựa trên giới tính:
+
+db.user.find({ gender: "Female" });
+
+
+
+// Truy vấn dữ liệu dựa trên tổng số dư tài khoản:
+
+db.finance.find({ total: { $gt: 100000 }});
+
+
+
